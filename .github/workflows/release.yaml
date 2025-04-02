@@ -16,133 +16,6 @@ on:
   # workflow_dispatch:
 
 jobs:
-  build-windows:
-    name: Build Windows
-    runs-on: windows-latest
-
-    strategy:
-      matrix:
-        arch: ['x86_64']
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-
-      - name: Generate TAG
-        id: Tag
-        run: |
-          $tag="continuous"
-          $name="Continuous Build"
-          if ( "true" -eq "${{ startsWith(github.ref, 'refs/tags/') }}" ) {
-            $tag="${{ github.ref_name }}"
-            $name='${{ github.ref_name }}'
-          }
-          echo "tag result: $tag - $name"
-          echo "::set-output name=tag::$tag"
-          echo "::set-output name=name::$name"
-         
-      - name: run-vcpkg
-        uses: lukka/run-vcpkg@v11.5  # Option 2: specify 'latest' or 'latestrc' in the input version arguments:
-
-      - uses: TheMrMilchmann/setup-msvc-dev@v3
-        with:
-          arch: ${{ matrix.arch }}
-      - name: Build
-        run: |
-          powershell tools/windows/ci.ps1 ${{ matrix.arch }} ${{ steps.tag.outputs.tag }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          # Artifact name
-          name: yui-${{ matrix.arch }}.build-win
-          path: tmp/build
-
-  build-linux:
-    name: Build Linux
-    runs-on: ubuntu-20.04
-
-    strategy:
-      matrix:
-        arch: ['x86_64']
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-
-      - name: Generate TAG
-        id: Tag
-        run: |
-          tag='continuous'
-          name='Continuous Build'
-          if [ 'true' == ${{ startsWith(github.ref, 'refs/tags/') }} ];then
-            tag='${{ github.ref_name }}'
-            name='${{ github.ref_name }}'
-          fi
-          echo "tag result: $tag - $name"
-          echo "::set-output name=tag::$tag"
-          echo "::set-output name=name::$name"
-         
-      - name: run-vcpkg
-        uses: lukka/run-vcpkg@v11.5  # Option 2: specify 'latest' or 'latestrc' in the input version arguments:
-
-      - name: Build
-        run: |
-          sudo apt install -y ninja-build
-          tools/linux/ci.sh ${{ matrix.arch }} ${{ steps.tag.outputs.tag }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          # Artifact name
-          name: yui-${{ matrix.arch }}.build-linux
-          path: tmp/build
-
-  build-mac-x86:
-    name: Build MAC
-    runs-on: self-hosted
-
-    strategy:
-      matrix:
-        arch: ['x86_64']
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-
-      - name: Generate TAG
-        id: Tag
-        run: |
-          tag='continuous'
-          name='Continuous Build'
-          if [ 'true' == ${{ startsWith(github.ref, 'refs/tags/') }} ];then
-            tag='${{ github.ref_name }}'
-            name='${{ github.ref_name }}'
-          fi
-          echo "tag result: $tag - $name"
-          echo "::set-output name=tag::$tag"
-          echo "::set-output name=name::$name"
-         
-      - name: run-vcpkg
-        uses: lukka/run-vcpkg@v11.5  # Option 2: specify 'latest' or 'latestrc' in the input version arguments:
-
-      - name: Build
-        run: |
-          brew install ninja
-          tools/mac/ci.sh ${{ matrix.arch }} ${{ steps.tag.outputs.tag }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          # Artifact name
-          name: yui-${{ matrix.arch }}.build-mac
-          path: tmp/build
 
   build-mac-arm64:
     name: Build MAC
@@ -203,9 +76,6 @@ jobs:
   upload:
     name: Create release and upload artifacts
     needs:
-      - build-windows
-      - build-linux
-      - build-mac-x86
       - build-mac-arm64
     runs-on: ubuntu-latest
     steps:
@@ -236,8 +106,6 @@ jobs:
           wget -q https://github.com/TheAssassin/pyuploadtool/releases/download/continuous/pyuploadtool-x86_64.AppImage
           chmod +x pyuploadtool-x86_64.AppImage
           ./pyuploadtool-x86_64.AppImage \
-          **build-win/*.dll \
-          **build-linux/*.so \
           **build-mac/*.dylib
 
       - name: Release
@@ -249,6 +117,4 @@ jobs:
           name: ${{ steps.tag.outputs.name }}
           tag_name: ${{ steps.tag.outputs.tag }}
           files: |
-            **build-win/*.dll
-            **build-linux/*.so
             **build-mac/*.dylib
