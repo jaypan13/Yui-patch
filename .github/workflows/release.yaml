@@ -23,7 +23,7 @@ jobs:
 
     strategy:
       matrix:
-        arch: ['arm64', 'arm64e']
+        arch: ['arm64e']
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
